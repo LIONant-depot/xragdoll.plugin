@@ -45,10 +45,11 @@ namespace xragdoll
         rigid           m_FrameA, m_FrameB;             // the SOLVER frames in each body's frame
         std::uint8_t    m_Type      = 0;                // xanimation::solver_joint_type: 0 none, 1 weld, 2 revolute, 3 spherical
         std::uint8_t    m_Mapping   = 0;                // xanimation::mapping_kind: 0 exact, 1 approximation, 2 unsupported
-        std::uint8_t    m_Flags     = 0;                // flag_cone_v | flag_twist_v | flag_hinge_v
-        float           m_Cone = 0, m_TwistLo = 0, m_TwistHi = 0, m_HingeLo = 0, m_HingeHi = 0;   // radians
+        std::uint8_t    m_Flags     = 0;                // flag_swing_v | flag_twist_v | flag_hinge_v
+        float           m_SwingCx = 0, m_SwingCy = 0, m_SwingRx = 0, m_SwingRy = 0;    // the swing ellipse in solver frame A (radians; R54)
+        float           m_TwistLo = 0, m_TwistHi = 0, m_HingeLo = 0, m_HingeHi = 0;     // radians
 
-        static constexpr std::uint8_t flag_cone_v = 1, flag_twist_v = 2, flag_hinge_v = 4;
+        static constexpr std::uint8_t flag_swing_v = 1, flag_twist_v = 2, flag_hinge_v = 4;
     };
 
     // A pair of bodies that never collide (besides jointed pairs, which never do)
@@ -63,7 +64,7 @@ namespace xragdoll
 
     struct ragdoll
     {
-        inline static constexpr auto xserializer_version_v = 1;
+        inline static constexpr auto xserializer_version_v = 2;        // 2: a spherical joint's swing is our ellipse (was a cone)
 
         inline          ragdoll     (void) noexcept = default;
         inline          ragdoll     (xserializer::stream&) noexcept {}
@@ -112,7 +113,8 @@ namespace xserializer::io_functions
         xerr Err;
         false || (Err = S.Serialize(V.m_BodyA)) || (Err = S.Serialize(V.m_BodyB)) || (Err = S.Serialize(V.m_Bone)) || (Err = SerializeIO(S, V.m_FrameA)) || (Err = SerializeIO(S, V.m_FrameB))
               || (Err = S.Serialize(V.m_Type)) || (Err = S.Serialize(V.m_Mapping)) || (Err = S.Serialize(V.m_Flags))
-              || (Err = S.Serialize(V.m_Cone)) || (Err = S.Serialize(V.m_TwistLo)) || (Err = S.Serialize(V.m_TwistHi)) || (Err = S.Serialize(V.m_HingeLo)) || (Err = S.Serialize(V.m_HingeHi));
+              || (Err = S.Serialize(V.m_SwingCx)) || (Err = S.Serialize(V.m_SwingCy)) || (Err = S.Serialize(V.m_SwingRx)) || (Err = S.Serialize(V.m_SwingRy))
+              || (Err = S.Serialize(V.m_TwistLo)) || (Err = S.Serialize(V.m_TwistHi)) || (Err = S.Serialize(V.m_HingeLo)) || (Err = S.Serialize(V.m_HingeHi));
         return Err;
     }
     template<> inline xerr SerializeIO<xragdoll::filter_pair>(xserializer::stream& S, const xragdoll::filter_pair& V) noexcept

@@ -516,8 +516,9 @@ namespace xragdoll_gen
             const auto& J = G.m_Joints[i]; const auto& A = J.m_Adapter; auto& O = Out.m_pJoints[i];
             O = {}; O.m_BodyA = J.m_BodyA; O.m_BodyB = J.m_BodyB; O.m_Bone = J.m_Bone; O.m_FrameA = details::ToFile(J.m_FrameA); O.m_FrameB = details::ToFile(J.m_FrameB);
             O.m_Type = std::uint8_t(A.m_Type); O.m_Mapping = std::uint8_t(A.m_Mapping);
-            O.m_Flags = std::uint8_t((A.m_bCone ? xragdoll::joint::flag_cone_v : 0) | (A.m_bTwist ? xragdoll::joint::flag_twist_v : 0) | (A.m_bHinge ? xragdoll::joint::flag_hinge_v : 0));
-            O.m_Cone = A.m_Cone; O.m_TwistLo = A.m_TwistLo; O.m_TwistHi = A.m_TwistHi; O.m_HingeLo = A.m_HingeLo; O.m_HingeHi = A.m_HingeHi;
+            O.m_Flags = std::uint8_t((A.m_bSwing ? xragdoll::joint::flag_swing_v : 0) | (A.m_bTwist ? xragdoll::joint::flag_twist_v : 0) | (A.m_bHinge ? xragdoll::joint::flag_hinge_v : 0));
+            O.m_SwingCx = A.m_SwingCx; O.m_SwingCy = A.m_SwingCy; O.m_SwingRx = A.m_SwingRx; O.m_SwingRy = A.m_SwingRy;
+            O.m_TwistLo = A.m_TwistLo; O.m_TwistHi = A.m_TwistHi; O.m_HingeLo = A.m_HingeLo; O.m_HingeHi = A.m_HingeHi;
         }
         Out.m_nFilter = std::uint32_t(R.m_Filter.size());
         Out.m_pFilter = new xragdoll::filter_pair[Out.m_nFilter];
