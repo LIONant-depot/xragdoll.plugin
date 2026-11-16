@@ -325,6 +325,13 @@ namespace xragdoll_gen
                 Sh.m_Local = details::ToFile({ Bx.m_Centre, details::FromAxes(Bx.m_Axis[0], Bx.m_Axis[1]) });
                 Sh.m_HalfExtents[0] = Bx.m_Half.m_X; Sh.m_HalfExtents[1] = Bx.m_Half.m_Y; Sh.m_HalfExtents[2] = Bx.m_Half.m_Z;
             }
+            if (O && O->m_bShapeSet)        // drawn by hand in the editor: it replaces the fitted one
+            {
+                Sh.m_Local = details::ToFile({ O->m_ShapeCentre, O->m_ShapeRotation.NormalizeSafeCopy() });
+                Sh.m_Radius = std::max(O->m_ShapeRadius, 0.005f); Sh.m_HalfSegment = std::max(O->m_ShapeHalfSegment, 0.0f);
+                Sh.m_HalfExtents[0] = O->m_ShapeHalfExtents.m_X; Sh.m_HalfExtents[1] = O->m_ShapeHalfExtents.m_Y; Sh.m_HalfExtents[2] = O->m_ShapeHalfExtents.m_Z;
+                Det.m_Report.push_back(std::format("{}: shape set by hand", Nm(b)));
+            }
             Volumes[i] = details::Volume(Sh);
 
             // diagnostics
@@ -478,6 +485,7 @@ namespace xragdoll_gen
             R.m_Capsule.m_Local = details::ToFile({ Mid, details::FromTo(vec3(0, 1, 0), Up) });
             R.m_Capsule.m_Radius = C.m_Radius; R.m_Capsule.m_HalfSegment = 0.5f * (C.m_B - C.m_A).Length();
             Det.m_Height = 2 * (R.m_Capsule.m_HalfSegment + R.m_Capsule.m_Radius);
+            Det.m_BoneNames.assign(S.m_Names.begin(), S.m_Names.end());
             Det.m_Capsule = std::format("radius {:.3f}, height {:.3f}, centre ({:.3f}, {:.3f}, {:.3f})", C.m_Radius, Det.m_Height, Mid.m_X, Mid.m_Y, Mid.m_Z);
         }
 

@@ -41,12 +41,25 @@ namespace xragdoll_desc
         std::string     m_Bone          = {};
         disposition     m_Disposition   = disposition::AUTO;
         shape_choice    m_Shape         = shape_choice::AUTO;
+        // the shape drawn by hand in the editor (its handles), in the body's frame, instead of the one fitted to the skin
+        bool            m_bShapeSet     = false;
+        xmath::fvec3    m_ShapeCentre   = xmath::fvec3(0, 0, 0);
+        xmath::fquat    m_ShapeRotation = xmath::fquat::fromIdentity();   // a capsule's segment along its local y
+        float           m_ShapeRadius   = 0;                              // capsule, sphere
+        float           m_ShapeHalfSegment = 0;                           // capsule
+        xmath::fvec3    m_ShapeHalfExtents = xmath::fvec3(0, 0, 0);       // box
 
         XPROPERTY_DEF
         ( "BoneOverride", bone_override
         , obj_member<"Bone",        &bone_override::m_Bone >
         , obj_member<"Disposition", &bone_override::m_Disposition, member_enum_span<disposition_v>,  member_help<"Body: owns a rigid body. Follows: rigid with the body above it (a movable joint here is a removed articulation, listed in the report). Animated: keeps its animation relative to the body above it. Excluded: not driven by the simulation"> >
         , obj_member<"Shape",       &bone_override::m_Shape,       member_enum_span<shape_choice_v>, member_help<"The body's collision shape (a body bone only)"> >
+        , obj_member<"ShapeSet",    &bone_override::m_bShapeSet,   member_help<"The shape below was set by hand (the viewport's handles) instead of fitted to the skin"> >
+        , obj_member<"ShapeCentre", &bone_override::m_ShapeCentre >
+        , obj_member<"ShapeRotation", &bone_override::m_ShapeRotation >
+        , obj_member<"ShapeRadius", &bone_override::m_ShapeRadius >
+        , obj_member<"ShapeHalfSegment", &bone_override::m_ShapeHalfSegment >
+        , obj_member<"ShapeHalfExtents", &bone_override::m_ShapeHalfExtents >
         )
     };
     XPROPERTY_REG(bone_override)

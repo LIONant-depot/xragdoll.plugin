@@ -65,6 +65,7 @@ namespace xragdoll_desc
         std::vector<joint_row>    m_Joints;
         std::vector<std::string>  m_Report;         // removed articulations, approximations, excluded pairs, errors (each line says which)
         std::vector<std::string>  m_Warnings;
+        std::vector<std::string>  m_BoneNames;      // the skeleton's bones in runtime order (the editor's bone tree)
         float                     m_TotalMass   = 0;
         float                     m_Height      = 0;    // m: feet to the top of the head at rest
         std::string               m_Capsule;            // the movement capsule
@@ -77,6 +78,7 @@ namespace xragdoll_desc
         , obj_member<"Joints",      &details::m_Joints,      member_flags<flags::SHOW_READONLY> >
         , obj_member<"Report",      &details::m_Report,      member_flags<flags::SHOW_READONLY> >
         , obj_member<"Warnings",    &details::m_Warnings,    member_flags<flags::SHOW_READONLY> >
+        , obj_member<"BoneNames",   &details::m_BoneNames,   member_flags<flags::SHOW_READONLY> >
         , obj_member<"TotalMass",   &details::m_TotalMass,   member_flags<flags::SHOW_READONLY> >
         , obj_member<"Height",      &details::m_Height,      member_flags<flags::SHOW_READONLY> >
         , obj_member<"Capsule",     &details::m_Capsule,     member_flags<flags::SHOW_READONLY> >
