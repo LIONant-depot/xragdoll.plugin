@@ -31,7 +31,7 @@
 #include "source/Tools/Editor/xeditor_scale_reference.h"                     // the Skeleton editor's human scale reference
 #include "dependencies/xeditor_tools/src/xeditor_tools_picking.h"       // ray against sphere / box: the hand picks the colliders
 #include "source/Tools/Editor/xeditor_transform_gizmo.h"                     // the previews' Move / Rotate gizmo, its tools and keys (Manipulate: on a shape)
-#include "plugins/xgeom_skin.plugin/source/Editor/xgeom_skin_editor_preview.h"  // the Skin Geom editor's preview: the skin drawn under the bones
+#include "plugins/xgeom_skin.plugin/source/Editor/xgeom_skin_editor_under.h"    // the skin drawn under the bones (shared with the Animation Package editor)
 #include <algorithm>
 #include <cmath>
 #include <format>
@@ -136,14 +136,12 @@ namespace xragdoll_editor
         xeditor::transform_gizmo::state                 m_Gizmo;                        // the shapes' Move / Rotate gizmo (the other editors' tools and keys: Q W E R)
         xeditor::transform_gizmo::actions               m_GizmoActions{ m_Gizmo };
         // the skin under the bones (the Skin button): the Skin Geom editor's own preview, with the bones' camera
-        xgeom_skin_editor::preview::runtime             m_SkinView;
-        xgeom_skin_editor::preview::render_settings     m_SkinSettings;
+        xgeom_skin_editor::skin_under                   m_SkinUnder;
         xgeom_skin_editor::preview::runtime::geom*      m_pSkinGeom = nullptr;
-        const void*                                     m_pSkinMaterialsOf = nullptr;     // the skin the preview's materials were made for
         std::vector<xmath::fmat4>                       m_SkinWorld;
         std::vector<xmath::fmat4>                       m_SkinRest;
         xgpu::device*                                   m_pDevice = nullptr;
-        bool                                            m_bShowSkin = false, m_bSkinInit = false;
+        bool                                            m_bShowSkin = false;
         bool                                            m_bFramed = false;              // the camera framed the character once: a Compile never moves it again
         std::vector<xanimation::body_shape>             m_CompiledShapes;               // each body's first shape as compiled (an undone hand edit goes back to it)
         double                                          m_LastTime = 0;
@@ -166,7 +164,6 @@ namespace xragdoll_editor
             AddPanel("Report",           dock::right,  [this] { RenderReport(); });
             if (pDevice) m_CameraToolbar.Init(m_Document.m_Guid.m_Instance.m_Value, 500.0f, 330.0f);     // with the gizmo's tools, Human and Skin
             m_pDevice = pDevice;
-            m_SkinSettings.m_bGridToYMin = false;       // the character stands on y = 0, as the bones' grid
             AddPanel("Ragdoll Viewport", dock::center, [this] { RenderViewport(); }, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
             AddPanel("Bones",            dock::left,   [this] { RenderBones(); });
             AddPanel("Description",      dock::left,   [this] { m_DescriptorInspector.Show(); });
@@ -174,7 +171,7 @@ namespace xragdoll_editor
             m_bReady = pDevice && m_Viewport.Init(*pDevice);
         }
 
-        ~session() noexcept override { EndSim(); LetGo(); m_Viewport.Release(); if (m_bSkinInit) m_SkinView.Release(); }
+        ~session() noexcept override { EndSim(); LetGo(); m_Viewport.Release(); m_SkinUnder.Release(); }
 
         void RegisterActions(ximgui::actions::context& Ctx) noexcept override { Ctx.Scope(m_GizmoActions, "Preview"); }     // Q W E R, as every preview
 
@@ -506,25 +503,14 @@ namespace xragdoll_editor
                                     {
                                         xeditor::transform_gizmo::Buttons(m_Gizmo, bHorizontal, ButtonHeight, "the selected body's shape");
                                         xeditor::scale_reference::Button(bHorizontal, ButtonHeight);
-                                        if (bHorizontal) ImGui::SameLine();
-                                        const bool bOn = m_bShowSkin;
-                                        if (bOn) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_Header]);
-                                        if (ImGui::Button(bHorizontal ? "Skin###ShowSkin" : "S###ShowSkin", bHorizontal ? ImVec2(52.0f, ButtonHeight) : ImVec2(32.0f, ButtonHeight))) m_bShowSkin = !m_bShowSkin;
-                                        if (bOn) ImGui::PopStyleColor();
-                                        if (ImGui::IsItemHovered()) xeditor::hint::Text("The skin, lit, under the bones and the shapes (%s)", bOn ? "on" : "off");
+                                        xgeom_skin_editor::skin_under::Button(m_bShowSkin, bHorizontal, ButtonHeight, "The skin, lit, under the bones and the shapes");
                                     });
         }
 
         // The skin under the bones (m_Viewport.m_Under): the Skin Geom editor's preview, posed by the bones shown, seen by the same camera
         void RenderSkinUnder(const std::vector<xanimation::rigid>& Bones, const ImVec2& Min, const ImVec2& Avail) noexcept
         {
-            auto* pHost   = xeditor::host::current();
-            auto* pWindow = pHost ? pHost->find<xgpu::window>() : nullptr;
-            if (!pWindow || !m_pSkinGeom || !m_pSkeleton) return;
-            if (m_pSkinMaterialsOf != m_pSkinGeom) { m_SkinView.RebuildMaterials(*m_pSkinGeom); m_pSkinMaterialsOf = m_pSkinGeom; }     // (as the Skin editor on load)
-            m_SkinView.m_View   = m_Viewport.m_Scene.m_View;
-            m_SkinView.m_Center = m_Viewport.m_Scene.m_Center;
-            m_SkinView.m_Radius = m_Viewport.m_Scene.m_Radius;
+            if (!m_pSkinGeom || !m_pSkeleton) return;
             m_SkinWorld.resize(Bones.size());
             // the skin's own rest worlds (the Skin editor's: they carry the skeleton's scale, the bind space) moved by each bone's change from rest
             xgpu::tools::editors::ComputeRestBoneWorlds(*m_pSkeleton, m_SkinRest);
@@ -534,21 +520,7 @@ namespace xragdoll_editor
                 const auto D = Bones[i] * m_Rest[i].Inverse();
                 m_SkinWorld[i] = xmath::fmat4(xmath::fvec3(1, 1, 1), D.m_Q, D.m_P) * m_SkinRest[i];
             }
-            m_SkinView.UploadBones(*m_pSkeleton, m_SkinWorld, xgeom_skin_editor::preview::pose_type::ANIMATION_POSE);
-            {   // the posed skin's box (its bones and a margin, as the game's skinned draws): it falls and moves away from its bind box, which would cull it
-                xmath::fbbox B{ xmath::fvec3(1e30f), xmath::fvec3(-1e30f) };
-                for (const auto& R : Bones) { B.m_Min = xmath::fvec3::Min(B.m_Min, R.m_P); B.m_Max = xmath::fvec3::Max(B.m_Max, R.m_P); }
-                B.m_Min = B.m_Min - xmath::fvec3(0.3f); B.m_Max = B.m_Max + xmath::fvec3(0.3f);
-                m_SkinView.m_PoseBounds = B;
-            }
-            m_SkinView.RenderShadow(*pWindow, *m_pSkinGeom, m_SkinSettings);
-            m_SkinView.Render(*pWindow, *m_pSkinGeom, m_SkinSettings, Avail.x, Avail.y);
-            ImGui::PushClipRect(Min, ImVec2(Min.x + Avail.x, Min.y + Avail.y), true);
-            xgpu::tools::imgui::AddCustomRenderCallback([this](xgpu::cmd_buffer& CmdBuffer, const ImVec2&, const ImVec2&)
-            {
-                if (m_bOpen) m_SkinView.m_Renderer.Blit(CmdBuffer, m_SkinView.m_RenderView);
-            });
-            ImGui::PopClipRect();
+            m_SkinUnder.Render(*m_pSkinGeom, *m_pSkeleton, m_SkinWorld, m_Viewport, Min, Avail, m_bOpen);
         }
 
         void RenderViewportBody() noexcept
@@ -580,8 +552,7 @@ namespace xragdoll_editor
             xskeleton_editor::viewport_item Items[1] = { { .m_pSkeleton = m_pSkeleton, .m_Bones = m_BoneWorlds, .m_pSelected = &m_SelBones, .m_Hovered = m_HoverBone } };
             m_Viewport.m_bGizmoHot = m_bHandleHot; m_Viewport.m_bGizmoDrag = m_bHandleDrag;
             if (m_bShowSkin && !m_pSkinGeom && !m_SkinRef.empty()) m_pSkinGeom = xresource::g_Mgr.getResource(m_SkinRef);     // (still loading when Resolve asked)
-            if (m_bShowSkin && m_pSkinGeom && !m_bSkinInit && m_pDevice) m_bSkinInit = m_SkinView.Init(*m_pDevice);
-            if (m_bShowSkin && m_pSkinGeom && m_bSkinInit) m_Viewport.m_Under = [this, &Bones](const ImVec2& Min, const ImVec2& Avail) { RenderSkinUnder(Bones, Min, Avail); };
+            if (m_bShowSkin && m_pSkinGeom && m_SkinUnder.Ready(m_pDevice)) m_Viewport.m_Under = [this, &Bones](const ImVec2& Min, const ImVec2& Avail) { RenderSkinUnder(Bones, Min, Avail); };
             else m_Viewport.m_Under = nullptr;
             xskeleton_editor::viewport_item Drawn[1] = { Items[0] };
             if (!m_bShowBones) Drawn[0].m_pSkeleton = nullptr;     // hidden: not drawn; picking still uses Items (and the colliders)
