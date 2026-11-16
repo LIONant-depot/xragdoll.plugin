@@ -519,6 +519,9 @@ namespace xragdoll_gen
             O.m_Flags = std::uint8_t((A.m_bSwing ? xragdoll::joint::flag_swing_v : 0) | (A.m_bTwist ? xragdoll::joint::flag_twist_v : 0) | (A.m_bHinge ? xragdoll::joint::flag_hinge_v : 0));
             O.m_SwingCx = A.m_SwingCx; O.m_SwingCy = A.m_SwingCy; O.m_SwingRx = A.m_SwingRx; O.m_SwingRy = A.m_SwingRy;
             O.m_TwistLo = A.m_TwistLo; O.m_TwistHi = A.m_TwistHi; O.m_HingeLo = A.m_HingeLo; O.m_HingeHi = A.m_HingeHi;
+            // the relaxed J seen in solver frame A (OffA^-1 J OffA): the loader's spring target is it times the rest's relative frames
+            const auto Rx = (A.m_OffA.ConjugateCopy() * A.m_Relaxed * A.m_OffA).NormalizeSafeCopy();
+            O.m_Relaxed[0] = Rx.m_X; O.m_Relaxed[1] = Rx.m_Y; O.m_Relaxed[2] = Rx.m_Z; O.m_Relaxed[3] = Rx.m_W; O.m_Tone = A.m_Tone;
         }
         Out.m_nFilter = std::uint32_t(R.m_Filter.size());
         Out.m_pFilter = new xragdoll::filter_pair[Out.m_nFilter];

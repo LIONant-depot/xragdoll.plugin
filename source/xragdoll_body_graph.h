@@ -59,6 +59,7 @@ namespace xragdoll
             A.m_bSwing = (F.m_Flags & joint::flag_swing_v) != 0; A.m_bTwist = (F.m_Flags & joint::flag_twist_v) != 0; A.m_bHinge = (F.m_Flags & joint::flag_hinge_v) != 0;
             A.m_SwingCx = F.m_SwingCx; A.m_SwingCy = F.m_SwingCy; A.m_SwingRx = F.m_SwingRx; A.m_SwingRy = F.m_SwingRy;
             A.m_TwistLo = F.m_TwistLo; A.m_TwistHi = F.m_TwistHi; A.m_HingeLo = F.m_HingeLo; A.m_HingeHi = F.m_HingeHi;
+            A.m_Relaxed = xmath::fquat(F.m_Relaxed[0], F.m_Relaxed[1], F.m_Relaxed[2], F.m_Relaxed[3]).NormalizeSafeCopy(); A.m_Tone = F.m_Tone;     // OffA is identity below
             if (std::size_t(std::max(F.m_BodyA, F.m_BodyB)) >= G.m_Bodies.size() || F.m_BodyA < 0 || F.m_BodyB < 0) { G.m_bOk = false; continue; }
             const auto SA = BodyRest(F.m_BodyA) * J.m_FrameA, SB = BodyRest(F.m_BodyB) * J.m_FrameB;
             A.m_OffA = xmath::fquat::fromIdentity();
