@@ -384,41 +384,11 @@ namespace xragdoll_editor
         // Drawing
         //----------------------------------------------------------------------------------------
 
-        // One shape's wireframe at its world frame W, into the viewport's lines
+        // One shape's wireframe at its world frame W, into the viewport's lines (the shared wire shape)
         void EmitShape(const xanimation::body_shape& S, const xanimation::rigid& W, std::uint32_t C) noexcept
         {
-            auto& V = m_Viewport.m_ExtraLines;
-            auto Seg = [&](const xmath::fvec3& a, const xmath::fvec3& b) { xskeleton_editor::EmitSegment(V, W.Apply(a), W.Apply(b), C, C); };
-            constexpr int N = 20; constexpr float Pi = 3.14159265f;
-            // an arc around Center in the plane of U, V, from angle A0 to A1
-            auto Arc = [&](const xmath::fvec3& Center, const xmath::fvec3& U, const xmath::fvec3& Vv, float R, float A0, float A1)
-            {
-                for (int i = 0; i < N; ++i)
-                {
-                    const float a = A0 + (A1 - A0) * float(i) / N, b = A0 + (A1 - A0) * float(i + 1) / N;
-                    Seg(Center + U * (R * std::cos(a)) + Vv * (R * std::sin(a)), Center + U * (R * std::cos(b)) + Vv * (R * std::sin(b)));
-                }
-            };
-            const xmath::fvec3 X(1, 0, 0), Y(0, 1, 0), Z(0, 0, 1);
-            if (S.m_Kind == xanimation::shape_kind::CAPSULE)
-            {
-                const float r = S.m_Radius, h = S.m_HalfSegment;
-                const xmath::fvec3 Top = Y * h, Bot = Y * -h;
-                Arc(Top, X, Z, r, 0, 2 * Pi); Arc(Bot, X, Z, r, 0, 2 * Pi);
-                Seg(Top + X * r, Bot + X * r); Seg(Top - X * r, Bot - X * r); Seg(Top + Z * r, Bot + Z * r); Seg(Top - Z * r, Bot - Z * r);
-                Arc(Top, X, Y, r, 0, Pi); Arc(Top, Z, Y, r, 0, Pi); Arc(Bot, X, Y, r, Pi, 2 * Pi); Arc(Bot, Z, Y, r, Pi, 2 * Pi);
-            }
-            else if (S.m_Kind == xanimation::shape_kind::SPHERE)
-            {
-                const xmath::fvec3 O(0, 0, 0);
-                Arc(O, X, Y, S.m_Radius, 0, 2 * Pi); Arc(O, Y, Z, S.m_Radius, 0, 2 * Pi); Arc(O, Z, X, S.m_Radius, 0, 2 * Pi);
-            }
-            else
-            {
-                const auto& H = S.m_HalfExtents;
-                auto Pt = [&](int i) { return xmath::fvec3((i & 1) ? H.m_X : -H.m_X, (i & 2) ? H.m_Y : -H.m_Y, (i & 4) ? H.m_Z : -H.m_Z); };
-                for (int i = 0; i < 8; ++i) for (int b = 1; b < 8; b <<= 1) if (!(i & b)) Seg(Pt(i), Pt(i | b));
-            }
+            const int K = S.m_Kind == xanimation::shape_kind::CAPSULE ? 0 : S.m_Kind == xanimation::shape_kind::SPHERE ? 1 : 2;
+            xskeleton_editor::EmitWireShape(m_Viewport.m_ExtraLines, K, S.m_Radius, S.m_HalfSegment, S.m_HalfExtents, W.m_P, W.m_Q, C);
         }
 
         // The bones shown now: the Drop's recording at the playback time, else the rest pose (standing on the floor)
