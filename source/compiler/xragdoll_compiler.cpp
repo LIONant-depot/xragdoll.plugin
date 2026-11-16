@@ -132,6 +132,12 @@ namespace xragdoll_compiler
             displayProgressBar("Fitting bodies", 0);
             std::vector<std::string> Warnings;
             const auto S = xragdoll_gen::FromManifest(m_Manifest, Warnings);
+            // free joints are not a ragdoll (C63: a skeleton saved with its limits Off compiled one whose knees bent every way, and nothing failed)
+            if (S.m_Limits.empty())
+            {
+                LogMessage(xresource_pipeline::msg_type::ERROR, "The skeleton's joint limits are Off: a ragdoll's joints come from them. Turn Joint Limits On in the Skeleton editor (Humanoid v2 for a person), compile the skeleton, then this ragdoll");
+                return xerr::create_f<state, "The skeleton has no joint limits">();
+            }
             const auto R = xragdoll_gen::Generate(S, m_Skin, m_InvBind, m_Descriptor, std::move(Warnings));
             displayProgressBar("Fitting bodies", 1);
 
