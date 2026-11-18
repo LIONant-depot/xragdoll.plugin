@@ -785,7 +785,8 @@ namespace xragdoll_editor
             }
             const auto After = xproperty::ui::undo::SnapshotToString(*pDesc->getProperties(), pDesc, C);
             xproperty::ui::undo::ApplySnapshotFromString(*pDesc->getProperties(), pDesc, Before, C);     // the command applies it (and undoes it)
-            m_Undo.Execute(std::format("SnapshotEdit -Label {} -Before {} -After {}", xeditor::Quote(std::format("Shape {}", Label)), xeditor::Quote(Before), xeditor::Quote(After)));
+            if (auto Err = m_Undo.Execute(std::format("SnapshotEdit -Label {} -Before {} -After {}", xeditor::Quote(std::format("Shape {}", Label)), xeditor::Quote(Before), xeditor::Quote(After))); !Err.empty())
+                xeditor::NotifyToast("Ragdoll: the shape edit failed: " + Err);      // (before, a refused edit vanished silently)
         }
 
         // The capability report: totals, warnings, the bodies, the joints (how well the solver holds the skeleton's limits), the approximations
