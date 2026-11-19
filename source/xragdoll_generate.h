@@ -205,6 +205,7 @@ namespace xragdoll_gen
             case bone_slot::SPINE: for (int b : Bones) Candidate[b] = 1; break;
             case bone_slot::NECK: case bone_slot::HEAD: case bone_slot::UPPERARM: case bone_slot::LOWERARM: case bone_slot::HAND:
             case bone_slot::THIGH: case bone_slot::CALF: case bone_slot::FOOT: Candidate[Bones.front()] = 1; break;
+            case bone_slot::TOE: case bone_slot::CLAVICLE: if (D.m_bDetailed) Candidate[Bones.front()] = 1; break;     // E66
             default: break;
             }
         }
@@ -249,7 +250,8 @@ namespace xragdoll_gen
             {
                 const int b = G0.m_Bodies[i].m_Bone;
                 const auto* O = FindOverride(b);
-                if (b != Hips && Share[i] < D.m_MinBodyShare && !(O && O->m_Disposition == xragdoll_desc::disposition::BODY))
+                const bool bDetail = D.m_bDetailed && (SlotOf[b] == bone_slot::TOE || SlotOf[b] == bone_slot::CLAVICLE);   // asked for by name: kept however small
+                if (b != Hips && !bDetail && Share[i] < D.m_MinBodyShare && !(O && O->m_Disposition == xragdoll_desc::disposition::BODY))
                 {
                     Body[b] = 0;
                     Det.m_Report.push_back(std::format("dropped body: {} has {:.2f} % of the skin (below MinBodyShare {:.2f} %): it follows the body above", Nm(b), 100 * Share[i], 100 * D.m_MinBodyShare));
@@ -293,7 +295,7 @@ namespace xragdoll_gen
             auto& Bd = G.m_Bodies[i]; const int b = Bd.m_Bone; const auto Slot = SlotOf[b]; R.m_Slot[i] = int(Slot);
             auto& Sh = R.m_Shapes[i];
             const auto* O = FindOverride(b);
-            int Kind = Slot == bone_slot::HEAD ? 1 : (Slot == bone_slot::HAND || Slot == bone_slot::FOOT) ? 2 : 0;
+            int Kind = Slot == bone_slot::HEAD ? 1 : (Slot == bone_slot::HAND || Slot == bone_slot::FOOT || Slot == bone_slot::TOE) ? 2 : 0;
             if (O && O->m_Shape != xragdoll_desc::shape_choice::AUTO) Kind = int(O->m_Shape) - 1;
             Sh.m_Kind = std::uint8_t(Kind);
 
@@ -386,7 +388,12 @@ namespace xragdoll_gen
                 {
                     const float F = Fraction(Key.first); if (F == 0) continue;
                     std::vector<int> Targets; float V = 0;
-                    const std::vector<int> Use = Key.first == bone_slot::SPINE ? Bones : std::vector<int>{ Bones.front() };
+                    std::vector<int> Use = Key.first == bone_slot::SPINE ? Bones : std::vector<int>{ Bones.front() };
+                    // E66: de Leva has no toe or clavicle row: the toe shares its foot's fraction, the clavicles the trunk's (shoulder
+                    // girdle), by volume. Without bodies of their own they resolve to the foot / chest body (no change).
+                    auto Add = [&](bone_slot s, bone_side Side) { if (const auto It = Slots.m_Bones.find({ s, Side }); It != Slots.m_Bones.end()) Use.push_back(It->second.front()); };
+                    if (Key.first == bone_slot::FOOT) Add(bone_slot::TOE, Key.second);
+                    if (Key.first == bone_slot::SPINE) for (const auto Side : { bone_side::LEFT, bone_side::RIGHT }) Add(bone_slot::CLAVICLE, Side);
                     for (int b : Use) if (const int Id = G.m_BoneBody[b]; Id >= 0 && std::find(Targets.begin(), Targets.end(), Id) == Targets.end()) { Targets.push_back(Id); V += Volumes[Id]; }
                     for (int Id : Targets) Mass[Id] += Total * F / 100.0f * (V > 0 ? Volumes[Id] / V : 1.0f / float(Targets.size()));
                 }

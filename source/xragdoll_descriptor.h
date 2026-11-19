@@ -87,6 +87,7 @@ namespace xragdoll_desc
         bool                            m_bFingersFollow    = true;
         bool                            m_bToesFollow       = true;
         bool                            m_bSelfCollision    = true;     // limbs collide with the torso and each other (jointed pairs and pairs overlapping at rest never)
+        bool                            m_bDetailed         = false;    // E66: a toe body per foot (hinged at the ball) and a clavicle body per side
         std::vector<bone_override>      m_Overrides         = {};
 
         XPROPERTY_VDEF
@@ -100,6 +101,7 @@ namespace xragdoll_desc
         , obj_member<"FingersFollow",   &descriptor::m_bFingersFollow,  member_help<"Fingers are rigid with the hand (their joints are listed as removed articulations)"> >
         , obj_member<"ToesFollow",      &descriptor::m_bToesFollow,     member_help<"Toes are rigid with the foot"> >
         , obj_member<"SelfCollision",   &descriptor::m_bSelfCollision,  member_help<"Bodies collide with each other, except jointed pairs and pairs that overlap at rest"> >
+        , obj_member<"Detailed",        &descriptor::m_bDetailed,       member_help<"Detailed humanoid: each foot is a heel body and a toe body hinged at the ball (the feet roll over the ball), and each shoulder has a clavicle body between the chest and the upper arm"> >
         , obj_member<"Overrides",       &descriptor::m_Overrides >
         )
     };
