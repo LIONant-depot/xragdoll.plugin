@@ -334,6 +334,24 @@ namespace xragdoll_gen
                 Sh.m_HalfExtents[0] = O->m_ShapeHalfExtents.m_X; Sh.m_HalfExtents[1] = O->m_ShapeHalfExtents.m_Y; Sh.m_HalfExtents[2] = O->m_ShapeHalfExtents.m_Z;
                 Det.m_Report.push_back(std::format("{}: shape set by hand", Nm(b)));
             }
+            // E66: a foot with a toe body ends at the ball (the toe joint): its box is cut there along the box axis that points at the
+            // toe, so the toe's own box is the front of the sole (a hand-set foot box drawn over the toes too)
+            if (Slot == bone_slot::FOOT && Sh.m_Kind == 2 && ChildBodies[i] == 1 && SlotOf[G.m_Bodies[OnlyChild[i]].m_Bone] == bone_slot::TOE)
+            {
+                const rigid L = details::FromFile(Sh.m_Local);
+                const vec3 Toe = S.m_World[b].Inverse().Apply(S.m_World[G.m_Bodies[OnlyChild[i]].m_Bone].m_P);       // (the bone frame: the ankle at 0)
+                const vec3 Up = S.m_World[b].m_Q.ConjugateCopy() * vec3(0, 1, 0);      // (standing at rest: the ankle is above the ball, so
+                const vec3 Tw = L.m_Q.ConjugateCopy() * (Toe - L.m_P), Dir = L.m_Q.ConjugateCopy() * (Toe - Up * Toe.Dot(Up));   //  only the level part of ankle -> toe picks the axis)
+                const float t[3] = { Tw.m_X, Tw.m_Y, Tw.m_Z }, d[3] = { Dir.m_X, Dir.m_Y, Dir.m_Z };
+                int k = 0; for (int a = 1; a < 3; ++a) if (std::abs(d[a]) > std::abs(d[k])) k = a;      // the box axis along ankle -> toe joint
+                if (const float h = Sh.m_HalfExtents[k]; std::abs(t[k]) < h)
+                {
+                    const float Lo = t[k] > 0 ? -h : t[k], Hi = t[k] > 0 ? t[k] : h;
+                    vec3 Shift(0, 0, 0); (k == 0 ? Shift.m_X : k == 1 ? Shift.m_Y : Shift.m_Z) = 0.5f * (Lo + Hi);
+                    Sh.m_Local = details::ToFile({ L.m_P + L.m_Q * Shift, L.m_Q }); Sh.m_HalfExtents[k] = 0.5f * (Hi - Lo);
+                    Det.m_Report.push_back(std::format("{}: the box ends at the toe joint ({:.3f} m of {:.3f} kept along its axis {}; the toe joint at ({:.3f}, {:.3f}, {:.3f}) in the box)", Nm(b), Hi - Lo, 2 * h, k, t[0], t[1], t[2]));
+                }
+            }
             Volumes[i] = details::Volume(Sh);
 
             // diagnostics
